@@ -40,7 +40,7 @@ extension Scanner {
     
     /// - Precondition: index != bytes.endIndex. It is assumed before calling pop that you have
     mutating func pop(_ n: Int) {
-        assert(pointer.advanced(by: n) < endAddress)
+        assert(pointer.advanced(by: n) <= endAddress)
         pointer = pointer.advanced(by: n)
     }
 }
