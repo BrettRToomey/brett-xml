@@ -25,7 +25,25 @@ class BMLTests: XCTestCase {
             XCTFail("Parser failed: \(error)")
         }
     }
-    
+
+    func testStringSelfClosingTag() {
+        do {
+            let result = try XMLParser.parse("<author firstName=\"Brett\" lastName=\"Toomey\"/>")
+
+            result.expect(objects: ["author"])
+            
+            result.expectObject(
+                named: "author",
+                containing: [
+                    ("firstName", "Brett"),
+                    ("lastName", "Toomey")
+                ]
+            )
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+
     func testArrayBasic() {
         do {
             let result = try XMLParser.parse(

@@ -155,7 +155,7 @@ extension XMLParser {
     mutating func extractAttributes() throws -> [(name: Bytes, value: Bytes)] {
         var attributes: [(Bytes, Bytes)] = []
         
-        while let byte = scanner.peek(), byte != .greaterThan {
+        while let byte = scanner.peek(), byte != .greaterThan, byte != .forwardSlash {
             skipWhitespace()
             
             guard scanner.peek() != .greaterThan else {
@@ -167,8 +167,9 @@ extension XMLParser {
             attributes.append((name, value))
         }
         
-        assert(scanner.peek() == .greaterThan)
-        scanner.pop()
+        assert(scanner.peek() == .greaterThan || scanner.peek() == .forwardSlash)
+        let popCount = scanner.peek() == .forwardSlash ? 2 : 1
+        scanner.pop(popCount)
         
         return attributes
     }
