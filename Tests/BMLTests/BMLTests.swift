@@ -8,6 +8,8 @@ import Foundation
 class BMLTests: XCTestCase {
     static var allTests = [
         ("testStringBasic", testStringBasic),
+        ("testSelfClosingTag", testSelfClosingTag),
+        ("testSelfClosingTagEmbedded", testSelfClosingTagEmbedded),
         ("testArrayBasic", testArrayBasic),
         ("testObjectBasic", testObjectBasic),
         ("testObjectUTF8", testObjectUTF8),
@@ -26,7 +28,7 @@ class BMLTests: XCTestCase {
         }
     }
 
-    func testStringSelfClosingTag() {
+    func testSelfClosingTag() {
         do {
             let result = try XMLParser.parse("<author firstName=\"Brett\" lastName=\"Toomey\"/>")
 
@@ -37,6 +39,31 @@ class BMLTests: XCTestCase {
                 containing: [
                     ("firstName", "Brett"),
                     ("lastName", "Toomey")
+                ]
+            )
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+
+    func testSelfClosingTagEmbedded() {
+        do {
+            let result = try XMLParser.parse(
+                "<author firstName=\"Brett\" lastName=\"Toomey\">" +
+                "   <img url=\"myimg.jpg\"/>" +
+                "</author>"
+            )
+
+            result.expect(objects: ["author"])
+            
+            result.expectObject(
+                named: "author",
+                containing: [
+                    ("firstName", "Brett"),
+                    ("lastName", "Toomey"),
+                    ("img", Node([
+                        "url": "myimg.jpg"
+                    ]))
                 ]
             )
         } catch {
