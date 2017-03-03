@@ -112,17 +112,22 @@ extension XMLParser {
         
         let sighting = BML(name: name)
 
-        try extractAttributes().forEach {
+        let (attributes, selfClosing) = try extractAttributes()
+        attributes.forEach {
             sighting.add(key: $0.name, value: $0.value)
         }
         
         outerLoop: while scanner.peek() != nil {
             skipWhitespace()
-            
+
+            guard !selfClosing else {
+                break outerLoop
+            }
+
             guard let byte = scanner.peek() else {
                 continue
             }
-            
+
             switch byte {
             case Byte.lessThan:
                 // closing tag
@@ -152,10 +157,10 @@ extension XMLParser {
         return consume(until: .lessThan)
     }
     
-    mutating func extractAttributes() throws -> [(name: Bytes, value: Bytes)] {
+    mutating func extractAttributes() throws -> (attributes: [(name: Bytes, value: Bytes)], selfClosing: Bool) {
         var attributes: [(Bytes, Bytes)] = []
         
-        while let byte = scanner.peek(), byte != .greaterThan {
+        while let byte = scanner.peek(), byte != .greaterThan, byte != .forwardSlash {
             skipWhitespace()
             
             guard scanner.peek() != .greaterThan else {
@@ -167,10 +172,11 @@ extension XMLParser {
             attributes.append((name, value))
         }
         
-        assert(scanner.peek() == .greaterThan)
-        scanner.pop()
+        assert(scanner.peek() == .greaterThan || scanner.peek() == .forwardSlash)
+        let popCount = scanner.peek() == .forwardSlash ? 2 : 1
+        scanner.pop(popCount)
         
-        return attributes
+        return (attributes, popCount == 2)
     }
     
     mutating func extractAttributeValue() throws -> Bytes {
