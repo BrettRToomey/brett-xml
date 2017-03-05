@@ -1,296 +1,158 @@
 import Core
 import Node
 
-let whitespace: Set<Byte> = [.newLine, .horizontalTab, .space, .carriageReturn]
-let attributeTerminators = whitespace.union([.equals])
-let attributeValueTerminators = whitespace.union([.quote])
-let tagNameTerminators = whitespace.union([.greaterThan])
+public typealias XML = BML
 
-extension Byte {
-    /// <
-    public static let lessThan: Byte = 0x3C
-    
-    /// >
-    public static let greaterThan: Byte = 0x3E
-    
-    /// !
-    public static let exclamationPoint: Byte = 0x21
-}
+public final class BML {
+    var _name: Bytes
+    var _text: Bytes?
 
-extension Byte {
-    var hex: String {
-        return "0x" + String(self, radix: 16).uppercased()
-    }
-}
-
-public struct XMLParser {
-    public enum Error: Swift.Error {
-        case malformedXML(String)
-        case unexpectedEndOfFile
-    }
+    var nameCache: String?
+    var textCache: String?
     
-    var scanner: Scanner<Byte>
-    
-    init(scanner: Scanner<Byte>) {
-        self.scanner = scanner
-    }
-}
-
-extension XMLParser {
-    public static func parse(_ xml: String) throws -> Node {
-        return try parse(xml.bytes)
-    }
-    
-    public static func parse(_ bytes: Bytes) throws -> Node {
-        var parser = XMLParser(scanner: Scanner(bytes))
-        var rootNode = Node.object([:])
-
-        while let sighting = try parser.extractTag() {
-           rootNode[sighting.name.fasterString] = sighting.makeNode()
+    public var name: String {
+        if let nameCache = nameCache {
+            return nameCache
+        } else {
+            let result = _name.fasterString
+            nameCache = result
+            return result
         }
-
-        return rootNode
     }
-}
-
-extension XMLParser {
-    mutating func extractTag() throws -> BML? {
-        skipWhitespace()
-        
-        guard scanner.peek() != nil else {
+    
+    public var text: String? {
+        guard _text != nil else {
             return nil
         }
         
-        guard scanner.pop() == .lessThan else {
-            throw Error.malformedXML("Expected tag")
-        }
-
-        guard let byte = scanner.peek() else {
-            throw Error.unexpectedEndOfFile
-        }
-        
-        switch byte {
-        // Header
-        case Byte.questionMark:
-            extractHeader()
-            return try extractTag()
-        
-        // Comment
-        case Byte.exclamationPoint:
-            eatComment()
-            return try extractTag()
-        
-        // Object
-        default:
-            return try extractObject()
-        }
-    }
-}
-
-extension XMLParser {
-    mutating func extractHeader() {
-        assert(scanner.peek() == .questionMark)
-        scanner.pop()
-        
-        skip(until: .questionMark)
-        if scanner.peek(aheadBy: 1) == .greaterThan {
-            scanner.pop(2)
+        if let textCache = textCache {
+            return textCache
         } else {
-            scanner.pop()
+            let result = _text!.fasterString
+            textCache = result
+            return result
         }
     }
     
-    mutating func extractObject() throws -> BML? {
-        // TODO(Brett):
-        // I shouldn't have to do this, figure out which state is throwing
-        // the pointer into a garbage state
-        if scanner.peek() == .lessThan {
-            scanner.pop()
+    public var attributes: [BML]
+    public var children: [BML]
+
+    init(
+        name: Bytes,
+        text: Bytes? = nil,
+        attributes: [BML] = [],
+        children: [BML] = []
+    ) {
+        _name = name
+        _text = text
+        self.attributes = attributes
+        self.children = children
+    }
+}
+
+extension BML {
+    func addChild(key: Bytes, value: Bytes) {
+        let sighting = BML(name: key, text: value)
+        add(child: sighting)
+    }
+
+    func addAttribute(key: Bytes, value: Bytes) {
+        let sighting = BML(name: key, text: value)
+        add(attribute: sighting)
+    }
+    
+    func add(child: BML) {
+        children.append(child)
+    }
+    
+    func add(attribute: BML) {
+        attributes.append(attribute)
+    }
+}
+
+extension BML {
+    public func children(named name: String) -> [BML] {
+        let name = name.bytes
+        return children.filter {
+            $0._name == name
+        }
+    }
+    
+    public func firstChild(named name: String) -> BML? {
+        let name = name.bytes
+        
+        for child in children {
+            if child._name == name {
+                return child
+            }
         }
         
-        let name = consume(until: tagNameTerminators)
+        return nil
+    }
+    
+    public func attributes(named name: String) -> [BML] {
+        let name = name.bytes
+        return children.filter {
+            $0._name == name
+        }
+    }
+    
+    public func firstAttribute(named name: String) -> BML? {
+        let name = name.bytes
         
-        let sighting = BML(name: name)
-
-        let (attributes, selfClosing) = try extractAttributes()
-        attributes.forEach {
-            sighting.add(key: $0.name, value: $0.value)
+        for attribute in attributes {
+            if attribute._name == name {
+                return attribute
+            }
         }
         
-        outerLoop: while scanner.peek() != nil {
-            skipWhitespace()
+        return nil
+    }
+}
 
-            guard !selfClosing else {
-                break outerLoop
-            }
+extension BML {
+    public subscript(_ name: String) -> BML? {
+        return firstChild(named: name)
+    }
+}
 
-            guard let byte = scanner.peek() else {
-                continue
-            }
+extension BML {
+    /*func makeNode() -> Node {
+        // String
+        if let text = text?.fasterString, children.count == 0 {
+            return .string(text)
+        }
 
-            switch byte {
-            case Byte.lessThan:
-                // closing tag
-                if scanner.peek(aheadBy: 1) == .forwardSlash {
-                    if isClosingTag(name) {
-                        break outerLoop
-                    } else {
-                        throw Error.malformedXML("Expected closing tag </\(name.string)>")
-                    }
-                } else { // new object
-                    guard let subObject = try extractObject() else {
-                        break outerLoop
-                    }
-                    sighting.add(key: subObject.name, value: subObject)
+        // Array
+        if children.count == 1, text == nil, children[0].value.count > 1 {
+            return .array(
+                children[0].value.map {
+                    $0.makeNode()
                 }
-                
-            default:
-                sighting.text = extractTagText()
-            }
+            )
         }
-        
-        return sighting
-    }
-    
-    mutating func extractTagText() -> Bytes {
-        skipWhitespace()
-        return consume(until: .lessThan)
-    }
-    
-    mutating func extractAttributes() throws -> (attributes: [(name: Bytes, value: Bytes)], selfClosing: Bool) {
-        var attributes: [(Bytes, Bytes)] = []
-        
-        while let byte = scanner.peek(), byte != .greaterThan, byte != .forwardSlash {
-            skipWhitespace()
-            
-            guard scanner.peek() != .greaterThan else {
-                continue
-            }
-            
-            let name = consume(until: attributeTerminators)
-            let value = try extractAttributeValue()
-            attributes.append((name, value))
-        }
-        
-        assert(scanner.peek() == .greaterThan || scanner.peek() == .forwardSlash)
-        let popCount = scanner.peek() == .forwardSlash ? 2 : 1
-        scanner.pop(popCount)
-        
-        return (attributes, popCount == 2)
-    }
-    
-    mutating func extractAttributeValue() throws -> Bytes {
-        skip(until: .quote)
-        assert(scanner.peek() == .quote)
-        
-        // opening `"`
-        scanner.pop()
-        skipWhitespace()
-        
-        let value = consume(until: .quote)
-        
-        guard scanner.peek() == .quote else {
-            throw Error.malformedXML("expected closing `\"`")
-        }
-        
-        // closing `"`
-        scanner.pop()
-        return value
-    }
-}
 
-extension XMLParser {
-    mutating func isClosingTag(_ expectedTagName: Bytes) -> Bool {
-        assert(scanner.peek(aheadBy: 1) == .forwardSlash)
+        // Object
+        var object = Node.object([:])
         
-        // </
-        scanner.pop(2)
-        
-        let tagName = consume(until: tagNameTerminators)
-        skipWhitespace()
-        assert(scanner.peek() == .greaterThan)
-        scanner.pop()
-        return tagName.elementsEqual(expectedTagName)
-    }
-    
-    mutating func eatComment() {
-        assert(scanner.peek() == .exclamationPoint)
-        
-        //TODO(Brett): be sure this is actually a comment before popping.
-        // otherwise throw an error
-        // !--
-        scanner.pop(3)
-        
-        while scanner.peek() != nil {
-            skip(until: .hyphen)
-            
-            guard scanner.peek(aheadBy: 1) != .hyphen else {
-                // -->
-                scanner.pop(3)
-                break
-            }
+        if let text = text?.fasterString {
+            object["text"] = .string(text)
         }
-    }
-}
 
-extension XMLParser {
-    mutating func skip(until terminator: Byte) {
-        while let byte = scanner.peek(), byte != terminator {
-            scanner.pop()
+        children.forEach {
+            let subObject: Node
+            if $0.value.count == 1 {
+                subObject = $0.value[0].makeNode()
+            } else {
+                subObject = .array(
+                    $0.value.map {
+                        $0.makeNode()
+                    }
+                )
+            }
+            object[$0.key.fasterString] = subObject
         }
-    }
-    
-    mutating func skip(until terminators: Set<Byte>) {
-        while let byte = scanner.peek(), !terminators.contains(byte) {
-            scanner.pop()
-        }
-    }
-    
-    mutating func skip(while allowed: Set<Byte>) {
-        while let byte = scanner.peek(), allowed.contains(byte) {
-            scanner.pop()
-        }
-    }
-    mutating func skip(while closure: (Byte) -> Bool) {
-        while let byte = scanner.peek(), closure(byte) {
-            scanner.pop()
-        }
-    }
-    
-    mutating func skipWhitespace() {
-        skip(while: whitespace)
-    }
-    
-    mutating func consume(while closure: (Byte) -> Bool) -> Bytes {
-        var consumed: [Byte] = []
-        
-        while let byte = scanner.peek(), closure(byte) {
-            consumed.append(byte)
-            scanner.pop()
-        }
-        
-        return consumed
-    }
-    
-    mutating func consume(until terminator: Byte) -> Bytes {
-        var consumed: [Byte] = []
-        
-        while let byte = scanner.peek(), byte != terminator {
-            consumed.append(byte)
-            scanner.pop()
-        }
-        
-        return consumed
-    }
-    
-    mutating func consume(until terminators: Set<Byte>) -> Bytes {
-        var consumed: [Byte] = []
-        
-        while let byte = scanner.peek(), !terminators.contains(byte) {
-            consumed.append(byte)
-            scanner.pop()
-        }
-        
-        return consumed
-    }
+
+        return object
+    }*/
 }
