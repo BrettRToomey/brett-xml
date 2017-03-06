@@ -5,10 +5,10 @@ public typealias XML = BML
 
 public final class BML {
     var _name: Bytes
-    var _text: Bytes?
+    var _value: Bytes?
 
     var nameCache: String?
-    var textCache: String?
+    var valueCache: String?
     
     public var name: String {
         if let nameCache = nameCache {
@@ -20,16 +20,16 @@ public final class BML {
         }
     }
     
-    public var text: String? {
-        guard _text != nil else {
+    public var value: String? {
+        guard _value != nil else {
             return nil
         }
         
-        if let textCache = textCache {
-            return textCache
+        if let valueCache = valueCache {
+            return valueCache
         } else {
-            let result = _text!.fasterString
-            textCache = result
+            let result = _value!.fasterString
+            valueCache = result
             return result
         }
     }
@@ -39,12 +39,12 @@ public final class BML {
 
     init(
         name: Bytes,
-        text: Bytes? = nil,
+        value: Bytes? = nil,
         attributes: [BML] = [],
         children: [BML] = []
     ) {
         _name = name
-        _text = text
+        _value = value
         self.attributes = attributes
         self.children = children
     }
@@ -52,12 +52,12 @@ public final class BML {
 
 extension BML {
     func addChild(key: Bytes, value: Bytes) {
-        let sighting = BML(name: key, text: value)
+        let sighting = BML(name: key, value: value)
         add(child: sighting)
     }
 
     func addAttribute(key: Bytes, value: Bytes) {
-        let sighting = BML(name: key, text: value)
+        let sighting = BML(name: key, value: value)
         add(attribute: sighting)
     }
     

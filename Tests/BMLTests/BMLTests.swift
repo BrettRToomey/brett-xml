@@ -145,7 +145,7 @@ class BMLTests: XCTestCase {
                 "    </Director>\n" +
                 "</Movie>"
             )
-            print(result)
+
             /*result.expect(objects: ["Movie"])
             result.expectObject(
                 named: "Movie",
@@ -158,6 +158,23 @@ class BMLTests: XCTestCase {
                     ]))
                 ]
             )*/
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testSelfClosing() {
+        do {
+            let result = try XMLParser.parse("<node/>")
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testSelfClosingWithAttributes() {
+        do {
+            let result = try XMLParser.parse("<node foo=\"bar\"/>")
+            print(result)
         } catch {
             XCTFail("Parser failed: \(error)")
         }
