@@ -48,6 +48,20 @@ public final class BML {
         self.attributes = attributes
         self.children = children
     }
+    
+    convenience init(
+        name: String,
+        value: String? = nil,
+        attributes: [BML] = [],
+        children: [BML] = []
+    ) {
+        self.init(
+            name: name.bytes,
+            value: value?.bytes,
+            attributes: attributes,
+            children: children
+        )
+    }
 }
 
 extension BML {

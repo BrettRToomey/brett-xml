@@ -121,6 +121,14 @@ extension XMLParser {
         
         // self-closing tag early-escape
         guard token != .forwardSlash else {
+            // /
+            scanner.pop()
+            
+            skipWhitespace()
+            
+            assert(scanner.peek() == .greaterThan)
+            // >
+            scanner.pop()
             return sighting
         }
         
