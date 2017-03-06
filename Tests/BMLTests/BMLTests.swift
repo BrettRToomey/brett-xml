@@ -6,6 +6,18 @@ import Foundation
 @testable import BML
 
 class BMLTests: XCTestCase {
+    static var allTests = [
+        ("testStringBasic", testStringBasic),
+        ("testArrayBasic", testArrayBasic),
+        ("testObjectBasic", testObjectBasic),
+        ("testObjectUTF8", testObjectUTF8),
+        ("testObjectEmbedded", testObjectEmbedded),
+        ("testSelfClosing", testSelfClosing),
+        ("testSelfClosingWithAttributes", testSelfClosingWithAttributes),
+        ("testSelfClosingEmbedded", testSelfClosingEmbedded),
+        ("testHugeXML", testHugeXML),
+    ]
+    
     func testStringBasic() {
         do {
             let result = try XMLParser.parse("<author>Brett Toomey</author>")
