@@ -8,12 +8,13 @@ import Foundation
 class BMLTests: XCTestCase {
     static var allTests = [
         ("testStringBasic", testStringBasic),
-        ("testSelfClosingTag", testSelfClosingTag),
-        ("testSelfClosingTagEmbedded", testSelfClosingTagEmbedded),
         ("testArrayBasic", testArrayBasic),
         ("testObjectBasic", testObjectBasic),
         ("testObjectUTF8", testObjectUTF8),
         ("testObjectEmbedded", testObjectEmbedded),
+        ("testSelfClosing", testSelfClosing),
+        ("testSelfClosingWithAttributes", testSelfClosingWithAttributes),
+        ("testSelfClosingEmbedded", testSelfClosingEmbedded),
         ("testHugeXML", testHugeXML),
     ]
     
@@ -21,52 +22,10 @@ class BMLTests: XCTestCase {
         do {
             let result = try XMLParser.parse("<author>Brett Toomey</author>")
             
-            /*result.expect(fields: [
-                "author": "Brett Toomey"
-            ])*/
-        } catch {
-            XCTFail("Parser failed: \(error)")
-        }
-    }
-
-    func testSelfClosingTag() {
-        do {
-            let result = try XMLParser.parse("<author firstName=\"Brett\" lastName=\"Toomey\"/>")
-            /*
-            result.expect(objects: ["author"])
-            
-            result.expectObject(
-                named: "author",
-                containing: [
-                    ("firstName", "Brett"),
-                    ("lastName", "Toomey")
-                ]
-            )*/
-        } catch {
-            XCTFail("Parser failed: \(error)")
-        }
-    }
-
-    func testSelfClosingTagEmbedded() {
-        do {
-            let result = try XMLParser.parse(
-                "<author firstName=\"Brett\" lastName=\"Toomey\">" +
-                "   <img url=\"myimg.jpg\"/>" +
-                "</author>"
-            )
-
-            /*result.expect(objects: ["author"])
-            
-            result.expectObject(
-                named: "author",
-                containing: [
-                    ("firstName", "Brett"),
-                    ("lastName", "Toomey"),
-                    ("img", Node([
-                        "url": "myimg.jpg"
-                    ]))
-                ]
-            )*/
+            result.expect(BML(
+                name: "author",
+                value: "Brett Toomey"
+            ))
         } catch {
             XCTFail("Parser failed: \(error)")
         }
@@ -82,11 +41,14 @@ class BMLTests: XCTestCase {
                 "</friends>"
             )
             
-            /*result.expect(fields: [
-                "friends": Node([
-                    "A friend", "Another friend", "Third friend"
-                ])
-            ])*/
+            result.expect(BML(
+                name: "friends",
+                children: [
+                    BML(name: "person", value: "A friend"),
+                    BML(name: "person", value: "Another friend"),
+                    BML(name: "person", value: "Third friend"),
+                ]
+            ))
         } catch {
             XCTFail("Parser failed: \(error)")
         }
@@ -98,14 +60,12 @@ class BMLTests: XCTestCase {
                 "<book id=\"5\"></book>"
             )
             
-            /*result.expect(objects: ["book"])
-            
-            result.expectObject(
-                named: "book",
-                containing: [
-                    ("id", "5"),
+            result.expect(BML(
+                name: "book",
+                attributes: [
+                    BML(name: "id", value: "5")
                 ]
-            )*/
+            ))
         } catch {
             XCTFail("Parser failed: \(error)")
         }
@@ -119,16 +79,14 @@ class BMLTests: XCTestCase {
                 "<俄语 լեզու=\"ռուսերեն\" another=\"value\">данные</俄语>"
             )
             
-            /*result.expect(objects: ["俄语"])
-            
-            result.expectObject(
-                named: "俄语",
-                containing: [
-                    ("լեզու", "ռուսերեն"),
-                    ("another", "value"),
-                    ("text", "данные"),
+            result.expect(BML(
+                name: "俄语",
+                value: "данные",
+                attributes: [
+                    BML(name: "լեզու", value: "ռուսերեն"),
+                    BML(name: "another", value: "value")
                 ]
-            )*/
+            ))
         } catch {
             XCTFail("Parser failed: \(error)")
         }
@@ -145,19 +103,70 @@ class BMLTests: XCTestCase {
                 "    </Director>\n" +
                 "</Movie>"
             )
-            print(result)
-            /*result.expect(objects: ["Movie"])
-            result.expectObject(
-                named: "Movie",
-                containing: [
-                    ("id", "1337"),
-                    ("Title", "Die To Live Another Day"),
-                    ("Director", Node([
-                        "Name": "James Blonde",
-                        "Age": "007"
-                    ]))
+            
+            result.expect(BML(
+                name: "Movie",
+                attributes: [BML(name: "id", value: "1337")],
+                children: [
+                    BML(name: "Title", value: "Die To Live Another Day"),
+                    BML(
+                        name: "Director",
+                        children: [
+                            BML(name: "Name", value: "James Blonde"),
+                            BML(name: "Age", value: "007")
+                        ]
+                    )
                 ]
-            )*/
+            ))
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testSelfClosing() {
+        do {
+            let result = try XMLParser.parse("<node/>")
+            result.expect(BML(name: "node"))
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testSelfClosingWithAttributes() {
+        do {
+            let result = try XMLParser.parse("<node foo=\"bar\"/>")
+            result.expect(
+                BML(
+                    name: "node",
+                    attributes: [BML(name: "foo", value: "bar")]
+                )
+            )
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testSelfClosingEmbedded() {
+        do {
+            let result = try XMLParser.parse(
+                "<author firstName=\"Brett\" lastName=\"Toomey\">" +
+                "    <img url=\"myimg.jpg\"/>" +
+                "</author>"
+            )
+            
+            result.expect(BML(
+                name: "author",
+                attributes: [
+                    BML(name: "firstName", value: "Brett"),
+                    BML(name: "lastName", value: "Toomey")
+                ],
+                children: [
+                    BML(
+                        name: "img",
+                        attributes: [BML(name: "url", value: "myimg.jpg")]
+                    )
+                ]
+            ))
         } catch {
             XCTFail("Parser failed: \(error)")
         }
@@ -288,6 +297,36 @@ class BMLTests: XCTestCase {
         measure {
             _ = try! XMLParser.parse(literal)
         }
+    }
+}
+
+extension BML {
+    func expect(_ expected: BML, file: StaticString = #file, line: UInt = #line) {
+        XCTAssertEqual(name, expected.name, file: file, line: line)
+        XCTAssertEqual(value, expected.value, file: file, line: line)
+        
+        if attributes.count == expected.attributes.count {
+            for (i, expectedAttribute) in expected.attributes.enumerated() {
+                attributes[i].expect(expectedAttribute, file: file, line: line)
+            }
+        } else {
+            XCTFail(
+                "Attribute count for \(name) and \(expected.name) don't match (\(attributes.count) != \(expected.attributes.count))",
+                file: file, line: line
+            )
+        }
+        
+        if children.count == expected.children.count {
+            for (i, expectedChild) in expected.children.enumerated() {
+                children[i].expect(expectedChild, file: file, line: line)
+            }
+        } else {
+            XCTFail(
+                "Children count for \(name) and \(expected.name) don't match (\(children.count) != \(expected.children.count))",
+                file: file, line: line
+            )
+        }
+        
     }
 }
 

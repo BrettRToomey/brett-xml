@@ -4,7 +4,7 @@ import Node
 let whitespace: Set<Byte> = [.newLine, .horizontalTab, .space, .carriageReturn]
 let attributeTerminators = whitespace.union([.equals])
 let attributeValueTerminators = whitespace.union([.quote])
-let tagNameTerminators = whitespace.union([.greaterThan])
+let tagNameTerminators = whitespace.union([.greaterThan, .forwardSlash])
 
 extension Byte {
     /// <
@@ -99,7 +99,7 @@ extension XMLParser {
         }
     }
     
-    mutating func extractObject() throws -> BML? {
+    mutating func extractObject() throws -> BML {
         // TODO(Brett):
         // I shouldn't have to do this, figure out which state is throwing
         // the pointer into a garbage state
@@ -111,17 +111,36 @@ extension XMLParser {
         
         let sighting = BML(name: name)
 
-        let (attributes, selfClosing) = try extractAttributes()
-        attributes.forEach {
-            sighting.addAttribute(key: $0.name, value: $0.value)
+        sighting.attributes = try extractAttributes()
+        
+        skipWhitespace()
+        
+        guard let token = scanner.peek() else {
+            throw Error.unexpectedEndOfFile
         }
+        
+        // self-closing tag early-escape
+        guard token != .forwardSlash else {
+            // /
+            scanner.pop()
+            
+            skipWhitespace()
+            
+            assert(scanner.peek() == .greaterThan)
+            // >
+            scanner.pop()
+            return sighting
+        }
+        
+        guard token == .greaterThan else {
+            throw Error.malformedXML("Expected `>` for tag: \(name.string)")
+        }
+        
+        // >
+        scanner.pop()
         
         outerLoop: while scanner.peek() != nil {
             skipWhitespace()
-
-            guard !selfClosing else {
-                break outerLoop
-            }
 
             guard let byte = scanner.peek() else {
                 continue
@@ -137,14 +156,12 @@ extension XMLParser {
                         throw Error.malformedXML("Expected closing tag </\(name.string)>")
                     }
                 } else { // new object
-                    guard let subObject = try extractObject() else {
-                        break outerLoop
-                    }
+                    let subObject = try extractObject()
                     sighting.add(child: subObject)
                 }
                 
             default:
-                sighting._text = extractTagText()
+                sighting._value = extractTagText()
             }
         }
         
@@ -156,8 +173,8 @@ extension XMLParser {
         return consume(until: .lessThan)
     }
     
-    mutating func extractAttributes() throws -> (attributes: [(name: Bytes, value: Bytes)], selfClosing: Bool) {
-        var attributes: [(Bytes, Bytes)] = []
+    mutating func extractAttributes() throws -> [BML] {
+        var attributes: [BML] = []
         
         while let byte = scanner.peek(), byte != .greaterThan, byte != .forwardSlash {
             skipWhitespace()
@@ -168,14 +185,10 @@ extension XMLParser {
             
             let name = consume(until: attributeTerminators)
             let value = try extractAttributeValue()
-            attributes.append((name, value))
+            attributes.append(BML(name: name, value: value))
         }
         
-        assert(scanner.peek() == .greaterThan || scanner.peek() == .forwardSlash)
-        let popCount = scanner.peek() == .forwardSlash ? 2 : 1
-        scanner.pop(popCount)
-        
-        return (attributes, popCount == 2)
+        return attributes
     }
     
     mutating func extractAttributeValue() throws -> Bytes {
