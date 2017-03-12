@@ -1,10 +1,23 @@
 import Core
 import Node
 
+/// \n, \t, ' ' or \r
 let whitespace: Set<Byte> = [.newLine, .horizontalTab, .space, .carriageReturn]
+
+///  =, \n, \t, ' ' or \r
 let attributeTerminators = whitespace.union([.equals])
+
+///  ", \n, \t, ' ' or \r
 let attributeValueTerminators = whitespace.union([.quote])
+
+///  >, /, \n, \t, ' ' or \r
 let tagNameTerminators = whitespace.union([.greaterThan, .forwardSlash])
+
+/// <![CDATA[
+let cDataHeader: Bytes = [.lessThan, .exclamationPoint, .leftSquareBracket, .C, .D, .A, .T, .A, .leftSquareBracket]
+
+// ]]>
+let cDataFooter: Bytes = [.rightSquareBracket, .rightSquareBracket, .greaterThan]
 
 extension Byte {
     /// <
@@ -15,6 +28,9 @@ extension Byte {
     
     /// !
     public static let exclamationPoint: Byte = 0x21
+    
+    /// T
+    public static let T: Byte = 0x54
 }
 
 extension Byte {
@@ -149,13 +165,28 @@ extension XMLParser {
             switch byte {
             case Byte.lessThan:
                 // closing tag
-                if scanner.peek(aheadBy: 1) == .forwardSlash {
+                
+                switch scanner.peek(aheadBy: 1) {
+                case Byte.forwardSlash?:
                     if isClosingTag(name) {
                         break outerLoop
                     } else {
-                        throw Error.malformedXML("Expected closing tag </\(name.string)>")
+                        throw Error.malformedXML("Expected closing tag </\(name.fasterString)>")
                     }
-                } else { // new object
+                    
+                case Byte.exclamationPoint?:
+                    switch scanner.peek(aheadBy: 2) {
+                    case Byte.hyphen?:
+                        eatComment()
+                        
+                    case Byte.leftSquareBracket?:
+                        sighting._value = try extractCData()
+                        
+                    default:
+                        throw Error.malformedXML("Expected comment or CDATA near ! in tag \(name.fasterString)")
+                    }
+                    
+                default:
                     let subObject = try extractObject()
                     sighting.add(child: subObject)
                 }
@@ -171,6 +202,27 @@ extension XMLParser {
     mutating func extractTagText() -> Bytes {
         skipWhitespace()
         return consume(until: .lessThan)
+    }
+    
+    mutating func extractCData() throws -> Bytes {
+        try expect(cDataHeader)
+        
+        var cdata: [Byte] = []
+        
+        while let byte = scanner.peek() {
+            if byte == .rightSquareBracket {
+                if find(cDataFooter) {
+                    // consume footer
+                    try expect(cDataFooter)
+                    break
+                }
+            }
+            
+            scanner.pop()
+            cdata.append(byte)
+        }
+        
+        return cdata
     }
     
     mutating func extractAttributes() throws -> [BML] {
@@ -241,6 +293,32 @@ extension XMLParser {
                 scanner.pop(3)
                 break
             }
+        }
+    }
+}
+
+extension XMLParser {
+    mutating func find(_ bytes: Bytes, startingFrom start: Int = 0) -> Bool {
+        var peeked = start
+        
+        for expect in bytes {
+            guard scanner.peek(aheadBy: peeked) == expect else {
+                return false
+            }
+            
+            peeked += 1
+        }
+        
+        return true
+    }
+    
+    mutating func expect(_ bytes: Bytes) throws {
+        for expected in bytes {
+            guard scanner.peek() == expected else {
+                throw Error.malformedXML("Expected \(bytes.fasterString)")
+            }
+            
+            scanner.pop()
         }
     }
 }
