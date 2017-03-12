@@ -249,7 +249,7 @@ extension XMLParser {
         while let byte = scanner.peek(), byte != .greaterThan, byte != .forwardSlash {
             skipWhitespace()
             
-            guard scanner.peek() != .greaterThan else {
+            guard scanner.peek() != .greaterThan, scanner.peek() != .forwardSlash else {
                 continue
             }
             
