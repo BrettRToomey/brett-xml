@@ -15,6 +15,7 @@ class BMLTests: XCTestCase {
         ("testSelfClosing", testSelfClosing),
         ("testSelfClosingWithAttributes", testSelfClosingWithAttributes),
         ("testSelfClosingEmbedded", testSelfClosingEmbedded),
+        ("testCDATA", testCDATA),
         ("testHugeXML", testHugeXML),
     ]
     
@@ -166,6 +167,18 @@ class BMLTests: XCTestCase {
                         attributes: [BML(name: "url", value: "myimg.jpg")]
                     )
                 ]
+            ))
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testCDATA() {
+        do {
+            let result = try XMLParser.parse("<summary><![CDATA[My text]]></summary>")
+            result.expect(BML(
+                name: "summary",
+                value: "My text"
             ))
         } catch {
             XCTFail("Parser failed: \(error)")
