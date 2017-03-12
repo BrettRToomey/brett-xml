@@ -183,6 +183,20 @@ class BMLTests: XCTestCase {
         }
     }
     
+    func testSelfClosingWhitespaceAfterAttributes() {
+        do {
+            let result = try XMLParser.parse("<Book id=\"1\" />")
+            result.expect(
+                BML(
+                    name: "Book",
+                    attributes: [BML(name: "id", value: "1")]
+                )
+            )
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
     func testCDATA() {
         do {
             let result = try XMLParser.parse("<summary><![CDATA[My text]]></summary>")
