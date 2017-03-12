@@ -15,6 +15,7 @@ class BMLTests: XCTestCase {
         ("testSelfClosing", testSelfClosing),
         ("testSelfClosingWithAttributes", testSelfClosingWithAttributes),
         ("testSelfClosingEmbedded", testSelfClosingEmbedded),
+        ("testCDATA", testCDATA),
         ("testHugeXML", testHugeXML),
     ]
     
