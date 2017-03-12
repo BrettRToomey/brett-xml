@@ -93,6 +93,15 @@ class BMLTests: XCTestCase {
         }
     }
     
+    func testUTF8ByteOrderMark() {
+        do {
+            let result = try XMLParser.parse("\u{FEFF}<Book></Book>")
+            result.expect(BML(name: "Book"))
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
     func testObjectEmbedded() {
         do {
             let result = try XMLParser.parse(
