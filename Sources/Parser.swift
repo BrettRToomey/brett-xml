@@ -71,12 +71,24 @@ extension XMLParser {
     
     public static func parse(_ bytes: Bytes) throws -> BML {
         var parser = XMLParser(scanner: Scanner(bytes))
-
+        
+        parser.trimByteOrderMark()
+        
         guard let root = try parser.extractTag() else {
            throw Error.malformedXML("Expected root element.")
         }
 
         return root
+    }
+    
+    mutating func trimByteOrderMark() {
+        if
+            scanner.peek() == 0xEF,
+            scanner.peek(aheadBy: 1) == 0xBB,
+            scanner.peek(aheadBy: 2) == 0xBF
+        {
+            scanner.pop(3)
+        }
     }
 }
 

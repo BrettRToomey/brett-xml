@@ -11,6 +11,7 @@ class BMLTests: XCTestCase {
         ("testArrayBasic", testArrayBasic),
         ("testObjectBasic", testObjectBasic),
         ("testObjectUTF8", testObjectUTF8),
+        ("testUTF8ByteOrderMark", testUTF8ByteOrderMark),
         ("testObjectEmbedded", testObjectEmbedded),
         ("testSelfClosing", testSelfClosing),
         ("testSelfClosingWithAttributes", testSelfClosingWithAttributes),
@@ -88,6 +89,15 @@ class BMLTests: XCTestCase {
                     BML(name: "another", value: "value")
                 ]
             ))
+        } catch {
+            XCTFail("Parser failed: \(error)")
+        }
+    }
+    
+    func testUTF8ByteOrderMark() {
+        do {
+            let result = try XMLParser.parse("\u{FEFF}<Book></Book>")
+            result.expect(BML(name: "Book"))
         } catch {
             XCTFail("Parser failed: \(error)")
         }
