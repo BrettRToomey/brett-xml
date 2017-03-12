@@ -11,6 +11,7 @@ class BMLTests: XCTestCase {
         ("testArrayBasic", testArrayBasic),
         ("testObjectBasic", testObjectBasic),
         ("testObjectUTF8", testObjectUTF8),
+        ("testUTF8ByteOrderMark", testUTF8ByteOrderMark),
         ("testObjectEmbedded", testObjectEmbedded),
         ("testSelfClosing", testSelfClosing),
         ("testSelfClosingWithAttributes", testSelfClosingWithAttributes),
