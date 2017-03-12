@@ -81,6 +81,7 @@ extension XMLParser {
 }
 
 extension XMLParser {
+    //TODO(Brett): merge this functionality with extractObject
     mutating func extractTag() throws -> BML? {
         skipWhitespace()
         
