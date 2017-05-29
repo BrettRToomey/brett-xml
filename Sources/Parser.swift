@@ -167,7 +167,7 @@ extension XMLParser {
         }
         
         guard token == .greaterThan else {
-            throw Error.malformedXML("Expected `>` for tag: \(name.string)")
+            throw Error.malformedXML("Expected `>` for tag: \(name.makeString())")
         }
         
         // >
