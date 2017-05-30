@@ -8,7 +8,7 @@ A pure Swift XML parser that's compatible with [Vapor's node](http://vapor.codes
 ## Integration
 Update your `Package.swift` file.
 ```swift
-.Package(url: "https://github.com/BrettRToomey/brett-xml.git", majorVersion: 0)
+.Package(url: "https://github.com/BrettRToomey/brett-xml.git", majorVersion: 1)
 ```
 
 ## Getting started 🚀
