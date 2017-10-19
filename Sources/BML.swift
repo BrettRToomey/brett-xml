@@ -7,7 +7,7 @@ public final class BML {
     var _name: Bytes
     var _value: Bytes?
 
-    var nameCache: String?
+    var nameCache: String? 
     var valueCache: String?
     
     public var name: String {
@@ -36,46 +36,52 @@ public final class BML {
     
     public var attributes: [BML]
     public var children: [BML]
+    public weak var parent: BML?
 
     init(
         name: Bytes,
         value: Bytes? = nil,
         attributes: [BML] = [],
-        children: [BML] = []
+        children: [BML] = [],
+        parent: BML? = nil
     ) {
         _name = name
         _value = value
         self.attributes = attributes
         self.children = children
+        self.parent = parent
     }
     
     convenience init(
         name: String,
         value: String? = nil,
         attributes: [BML] = [],
-        children: [BML] = []
+        children: [BML] = [],
+        parent: BML? = nil
     ) {
         self.init(
             name: name.bytes,
             value: value?.bytes,
             attributes: attributes,
-            children: children
+            children: children,
+            parent: parent
         )
     }
 }
 
 extension BML {
     func addChild(key: Bytes, value: Bytes) {
-        let sighting = BML(name: key, value: value)
+        let sighting = BML(name: key, value: value, parent: self)
         add(child: sighting)
     }
 
     func addAttribute(key: Bytes, value: Bytes) {
-        let sighting = BML(name: key, value: value)
+        let sighting = BML(name: key, value: value, parent: self)
         add(attribute: sighting)
     }
     
     func add(child: BML) {
+        child.parent = self
         children.append(child)
     }
     
