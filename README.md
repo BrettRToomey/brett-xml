@@ -16,5 +16,5 @@ BML is easy to use, just pass it a `String` or an array of `Byte`s.
 ```swift
 import BML
 let node = try XMLParser.parse("<book id=\"5\"></book>")
-print(node["book", "id"]?.int) // prints 5
+print(node["book"]?["id"]?.value) // prints Optional("5")
 ```
